@@ -1,3 +1,5 @@
-Use AR.js to catch boxes with a basket
+# The Great Apples-Catch
 
-Basket model taken for free from: [Sketchfab](https://sketchfab.com/search?features=downloadable&sort_by=-relevance&type=models)
+Use AR.js to catch apples with a basket.
+
+Basket&Apple model taken for free from: [Sketchfab](https://sketchfab.com/search?features=downloadable&sort_by=-relevance&type=models)

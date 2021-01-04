@@ -1,54 +1,68 @@
+
+//This will be true if the basket is detected
+//It is set in the #basketMarker.event("markerFound"/"markerLost")
 var basketActive = false;
+
+//Global variable to memorise the points obtained by the user
 var pcts;
 
+//Function that returns true if the value is between [(reference - tolerance) (reference+tolerance)]
+function valueBetween(value, reference, tolerance) {
+    if(value >= reference - tolerance && value <= reference + tolerance) {
+        return true;
+    }
+    return false;
+}
+
+/**We register a new component named collect.
+  - We do this in order to have acces to the tick function of the component.
+    This function is called at each frame randering and in it we will make the collision-detection more accurate.
+    This is needed so the visual effect of catching an apple is more realistic.
+**/
 AFRAME.registerComponent('collect', {
+    //We added the aabb-collider as a dependency, as that component must be loaded first,
+    //because in this component we use stuff from `aabb-collider`.
     dependencies: ["aabb-collider"],
+
     init: function () {
       console.log(this.el.components);
     },
 
-    //TODO ar trebui să calculez distanța obiectelor în 3D.
-
     tick: function() {
+        
+        //If the basket is detected on the screen and there is any collision
         if(basketActive && this.el.components["aabb-collider"]["intersectedEls"].length > 0) {
+
             let basketCenter = this.el.components["aabb-collider"]["boxCenter"];
+
+            //We loop through all the objects that collide with our basket.
             for (let i = 0; i < this.el.components["aabb-collider"]["intersectedEls"].length; i++) {
+
                 const apple = this.el.components["aabb-collider"]["intersectedEls"][i];
                 if(apple.getAttribute('collected') === "true") {
                     continue;
                 }
                 let appleCenter = apple.object3D.boundingBoxCenter;
-                if(appleCenter.y < (basketCenter.y - 0.5) ) {
+
+                //Only collect the apple if it is visually inside the basket
+                if(appleCenter.y < (basketCenter.y - 0.5) &&
+                    valueBetween(appleCenter.x, basketCenter.x, 0.75) &&
+                    valueBetween(appleCenter.z, basketCenter.z, 0.75)) {
                     // console.log(apple.id, "collected")
                     apple.setAttribute("collected", "true");
                     apple.components["animation__fall"].animation.restart();
                     pcts.setAttribute("text",
                         "value: " + String(Number(pcts.components["text"].attrValue.value) + 1)  + "; color: #FFF");
                 }
+
             }
-            // restore animation somehow
-            // console.log(this.el.id, "collided with",
-            // this.el.components["aabb-collider"]["intersectedEls"].map(x => x.id)[0],
-            // "at [1]", this.el.components["aabb-collider"]["boxCenter"], "and [2]",
-            // this.el.components["aabb-collider"]["intersectedEls"][0].object3D.boundingBoxCenter)
         }
     }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    const basket = document.getElementById('catchPattern');
-    // const hiddenBox = document.getElementById('js-hidden-box');
-    basket.addEventListener('hitstart', (event) => {
-        // let intersectedIDs = [];
-        // event.intersectedEls.forEach(element => {
-        //     intersectedIDs.push(element.getAttribute("id"));
-        // });
-        // console.log("Collision with: " + intersectedIDs);
-        // console.log(event)
-        // hiddenBox.emit('reveal')
-    });
 
-    
+    //Set the basketActive variable accordingly
     var basketMarker = document.getElementById('basketMarker');
     basketMarker.addEventListener("markerFound", (event) => {
         console.log("Basket found!");
@@ -58,15 +72,14 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Basket lost!");
         basketActive = false;
     });
-    console.log(basketMarker);
 
-
-
+    //Get a random number
     function getRandomArbitrary(min, max) {
         return Math.random() * (max - min) + min;
     }
     const mainScene = document.getElementById('mainScene');
 
+    //All the apples will be cloned from this
     const mainApple = document.getElementById('mainApple');
 
     pcts = document.getElementById('pcts');
@@ -75,65 +88,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     var score = 0;
     //random x: i + (0 ... 0.5)
+    const min_x = -0.5;
+    const max_x = 0.5;
+
     //random y: 4 ... 7
-    //random z: -7 ... -9
+    const min_y = 4.0;
+    const max_y = 7.0;
+
+    //random z: -9 ... -6
+    const min_z = -9.0;
+    const max_z = -6.0;
 
     for (let i = -3; i < 4; i++) {
+        //We generate random-positioned apples
         let tmpApple = mainApple.cloneNode(true);
         tmpApple.setAttribute("id", "apple" + String(i + 3));
+
+        //We set the `collected` attribute to false.
+        //It will become true when the apple is collected
         tmpApple.setAttribute("collected", "false");
-        let random_x = i + getRandomArbitrary(0, 0.5);
-        let random_y = getRandomArbitrary(4.0, 7.0);
-        let random_z = getRandomArbitrary(-7.0, -9.0);
+
+        let random_x = i + getRandomArbitrary(min_x, max_x);
+        let random_y = getRandomArbitrary(min_y, max_y);
+        let random_z = getRandomArbitrary(min_z, max_z);
+
         let tmpStartPosition = random_x + " " + random_y + " " + random_z;
-        let tmpEndPosition = random_x + " -3 " + random_z;
+        let tmpEndPosition = random_x + " -4 " + random_z;
 
         let random_duration = 1000 * getRandomArbitrary(2, 5);
 
         tmpApple.addEventListener('hitstart', (event) => {
-            // let intersectedIDs = [];
-            // event.intersectedEls.forEach(element => {
-            //     intersectedIDs.push(element.getAttribute("id"));
-            // });
-            // console.log("Collision with: " + intersectedIDs);
+
+            //We set the collected attribute of the apple to false when the collision starts.
+            //The actual collection of the apple will be realised later
             event.target.setAttribute("collected", "false");
-            // if(basketActive) {
-            //     let appleCenter = event.target.components["aabb-collider"]["boxCenter"];
-            //     let basketCenter = event.target.components["aabb-collider"]["intersectedEls"][0].object3D.boundingBoxCenter;
-
-
-            //     console.log(event.target.id, "collided with",
-            //     event.target.components["aabb-collider"]["intersectedEls"].map(x => x.id)[0],
-            //     "at [1]", event.target.components["aabb-collider"]["boxCenter"], "and [2]",
-            //     event.target.components["aabb-collider"]["intersectedEls"][0].object3D.boundingBoxCenter)
-            //     // console.log(event.target.components["aabb-collider"]["intersectedEls"][0]);
-            //     // console.log(event);
-
-            //     if(appleCenter.y > basketCenter.y) {
-            //         // event.target.components["animation__fall"].beginAnimation();
-            //         pcts.setAttribute("text",
-            //             "value: " + String(Number(pcts.components["text"].attrValue.value) + 1)  + "; color: #FFF");
-            //     }
-            // }
-            // hiddenBox.emit('reveal')
         });
 
         tmpApple.setAttribute("position", tmpStartPosition);
         tmpApple.setAttribute("animation__fall",
          "property: position; to: " + tmpEndPosition + "; dur: " +
          random_duration + "; easing: linear; loop: true")
+
+         
         mainScene.appendChild(tmpApple);
         apples.push(tmpApple);
     }
-
-    // mainScene.appendChild(apples);
-    // mainScene.append(apples);
-
-    // box.addEventListener('collideEnd', () => {
-    //   console.log("Element has finished collision");
-    // })
-    // const plane = document.getElementById('js-plane');
-    // plane.addEventListener('click', () => {
-    //     box.emit('move');
-    // })
 })
